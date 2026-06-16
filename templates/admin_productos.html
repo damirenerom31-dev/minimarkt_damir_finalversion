@@ -1,356 +1,70 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Minimarkt Damir</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Minimarkt Damir</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"><link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head><body>
 
-    <style>
-        .hero-admin-dashboard {
-            background: linear-gradient(135deg, #ff6600, #ff9f43);
-            color: white;
-            padding: 35px;
-            border-radius: 18px;
-            margin-bottom: 30px;
-        }
+<header class="barra-navegacion barra-saga"><div class="bloque-marca"><a href="{{ url_for('index') }}" class="enlace-home"><i class="fa-solid fa-store icono-tienda-logo"></i><h1 class="logo-texto-principal">Minimarkt <span>Damir</span></h1></a></div><div class="menu-admin-junto-logo"><a href="{{ url_for('admin_clientes') }}" class="enlace-admin-superior"><i class="fa-solid fa-users"></i> Clientes</a><a href="{{ url_for('admin_productos') }}" class="enlace-admin-superior activo"><i class="fa-solid fa-box"></i> Productos</a></div><nav class="menu-navegacion-derecha"><ul class="lista-enlaces-navegacion"><li><a href="{{ url_for('index') }}" class="enlace-menu"><i class="fa-solid fa-house"></i> Inicio</a></li><li><a href="{{ url_for('admin_logout') }}" class="enlace-menu"><i class="fa-solid fa-right-from-bracket"></i> Cerrar Admin</a></li></ul></nav></header>
 
-        .dashboard-falabella-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
+<main class="contenedor-tienda flex-column-layout admin-page">
 
-        .metric-card {
-            background: white;
-            border-radius: 16px;
-            padding: 22px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            border-left: 5px solid #ff6600;
-        }
+<section class="hero-admin-dashboard"><div><p class="etiqueta-dashboard">Panel Interactivo</p><h2>Dashboard De Productos</h2><span>Controla, Edita Y Revisa Los Productos Del Minimarket.</span></div></section>
 
-        .metric-card h3 {
-            color: #555;
-            font-size: 16px;
-            margin-bottom: 10px;
-        }
+{% with mensajes = get_flashed_messages() %}{% if mensajes %}<div class="mensaje-admin">{{ mensajes[0] }}</div>{% endif %}{% endwith %}
 
-        .metric-card strong {
-            font-size: 28px;
-            color: #ff6600;
-        }
+<section class="dashboard-falabella-grid">
+<article class="metric-card" data-admin-filter="todos"><i class="fa-solid fa-boxes-stacked"></i><span>Total Productos</span><strong>{{ total_productos }}</strong><small>Click Para Ver Todos</small></article>
+<article class="metric-card" data-admin-filter="economicos"><i class="fa-solid fa-coins"></i><span>Económicos</span><strong>{{ productos_economicos }}</strong><small>Menor O Igual A S/ 5</small></article>
+<article class="metric-card"><i class="fa-solid fa-tag"></i><span>Precio Promedio</span><strong>S/ {{ '%.2f'|format(precio_promedio) }}</strong><small>Promedio General</small></article>
+<article class="metric-card"><i class="fa-solid fa-layer-group"></i><span>Pasillos Activos</span><strong>{{ total_pasillos }}</strong><small>Pasillos Registrados</small></article>
 
-        .panel-admin-seccion {
-            background: white;
-            border-radius: 16px;
-            padding: 25px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        }
+<article class="metric-card grande"><h3>Productos Por Pasillo</h3><div class="mini-bars">{% for item in productos_por_pasillo %}<button class="bar-item" data-admin-filter="pasillo-{{ item.Pasillo }}"><span>{{ item.Pasillo }}</span><b style="height: {{ 25 + item.Total * 5 }}px"></b><small>{{ item.Total }}</small></button>{% endfor %}</div></article>
 
-        .form-admin-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
-        }
+<article class="metric-card grande lista-reciente"><h3>Últimos Productos</h3>{% for producto in ultimos_productos %}<button class="fila-reciente" data-admin-filter="id-{{ producto.IdProducto }}"><span>{{ producto.Nombre }}</span><small>{{ producto.Marca }} - S/ {{ producto.Precio }}</small></button>{% endfor %}</article>
+</section>
 
-        .form-admin-grid input,
-        .form-admin-grid select,
-        .tabla-admin input,
-        .tabla-admin select {
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            width: 100%;
-        }
+<section class="panel-admin-seccion panel-elegante"><h2><i class="fa-solid fa-plus"></i> Agregar Producto</h2><form method="POST" enctype="multipart/form-data" class="formulario-admin-grid"><input type="text" name="nombre" placeholder="Nombre" required><input type="text" name="marca" placeholder="Marca" required><input type="number" step="0.01" name="precio" placeholder="Precio" required>
 
-        .btn-admin {
-            background: #ff6600;
-            color: white;
-            border: none;
-            padding: 10px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-        }
+<select name="pasillo" required>
+<option value="">Seleccionar Pasillo</option>
+<option value="Abarrotes">Abarrotes</option>
+<option value="Bebidas">Bebidas</option>
+<option value="Desayuno">Desayuno</option>
+<option value="Snacks">Snacks</option>
+<option value="Limpieza">Limpieza</option>
+<option value="Lácteos">Lácteos</option>
+<option value="Cuidado Personal">Cuidado Personal</option>
+<option value="Conservas">Conservas</option>
+<option value="Carnes">Carnes</option>
+<option value="Frutas Y Verduras">Frutas Y Verduras</option>
+</select>
 
-        .btn-admin:hover {
-            background: #e85c00;
-        }
+<input type="text" name="imagen" placeholder="Ruta Imagen: img/productos/arroz.svg"><input type="file" name="imagen_archivo" accept="image/*"><button type="submit" class="btn-formulario-primario">Agregar Producto</button></form></section>
 
-        .btn-eliminar {
-            background: #dc3545;
-        }
+<section class="panel-admin-seccion panel-elegante"><div class="cabecera-panel-tabla"><h2><i class="fa-solid fa-boxes-stacked"></i> Productos Registrados</h2><input id="buscador-admin" class="buscador-admin" type="text" placeholder="Buscar Producto..."></div><div class="tabla-admin-contenedor"><table class="tabla-admin tabla-admin-edicion" id="tabla-admin-datos"><tr><th>ID</th><th>Imagen</th><th>Nombre</th><th>Marca</th><th>Precio</th><th>Pasillo</th><th>Ruta Imagen</th><th>Cambiar Imagen</th><th>Acciones</th></tr>
 
-        .btn-eliminar:hover {
-            background: #b02a37;
-        }
+{% for producto in productos %}
+<tr data-id="{{ producto.IdProducto }}" data-pasillo="{{ producto.Pasillo }}"><td>{{ producto.IdProducto }}</td>
 
-        .tabla-admin {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-        }
+<td>{% if producto.Imagen %}<img class="mini-producto-admin" src="{{ url_for('static', filename=producto.Imagen) }}" alt="{{ producto.Nombre }}">{% else %}<span class="avatar-cliente-admin">{{ producto.Nombre[0] }}</span>{% endif %}</td>
 
-        .tabla-admin th,
-        .tabla-admin td {
-            padding: 12px;
-            border-bottom: 1px solid #eee;
-            text-align: left;
-            vertical-align: middle;
-        }
+<td><input form="editar-producto-{{ producto.IdProducto }}" type="text" name="nombre" value="{{ producto.Nombre }}" required></td>
+<td><input form="editar-producto-{{ producto.IdProducto }}" type="text" name="marca" value="{{ producto.Marca }}" required></td>
+<td><input form="editar-producto-{{ producto.IdProducto }}" type="number" step="0.01" name="precio" value="{{ producto.Precio }}" required></td>
 
-        .tabla-admin th {
-            background: #ff6600;
-            color: white;
-        }
+<td><select form="editar-producto-{{ producto.IdProducto }}" name="pasillo" required>
+<option value="Abarrotes" {% if producto.Pasillo == 'Abarrotes' %}selected{% endif %}>Abarrotes</option>
+<option value="Bebidas" {% if producto.Pasillo == 'Bebidas' %}selected{% endif %}>Bebidas</option>
+<option value="Desayuno" {% if producto.Pasillo == 'Desayuno' %}selected{% endif %}>Desayuno</option>
+<option value="Snacks" {% if producto.Pasillo == 'Snacks' %}selected{% endif %}>Snacks</option>
+<option value="Limpieza" {% if producto.Pasillo == 'Limpieza' %}selected{% endif %}>Limpieza</option>
+<option value="Lácteos" {% if producto.Pasillo == 'Lácteos' %}selected{% endif %}>Lácteos</option>
+<option value="Cuidado Personal" {% if producto.Pasillo == 'Cuidado Personal' %}selected{% endif %}>Cuidado Personal</option>
+<option value="Conservas" {% if producto.Pasillo == 'Conservas' %}selected{% endif %}>Conservas</option>
+<option value="Carnes" {% if producto.Pasillo == 'Carnes' %}selected{% endif %}>Carnes</option>
+<option value="Frutas Y Verduras" {% if producto.Pasillo == 'Frutas Y Verduras' %}selected{% endif %}>Frutas Y Verduras</option>
+</select></td>
 
-        .tabla-admin img {
-            width: 55px;
-            height: 55px;
-            object-fit: contain;
-        }
+<td><input form="editar-producto-{{ producto.IdProducto }}" type="text" name="imagen" value="{{ producto.Imagen }}" required></td>
+<td><input form="editar-producto-{{ producto.IdProducto }}" type="file" name="imagen_archivo" accept="image/*"></td>
 
-        .mensaje-flash {
-            background: #fff3cd;
-            color: #856404;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
+<td class="celda-acciones-admin"><form id="editar-producto-{{ producto.IdProducto }}" method="POST" enctype="multipart/form-data" action="{{ url_for('admin_editar_producto', id_producto=producto.IdProducto) }}"></form><button form="editar-producto-{{ producto.IdProducto }}" type="submit" class="btn-admin-guardar"><i class="fa-solid fa-floppy-disk"></i> Guardar</button><form method="POST" action="{{ url_for('admin_eliminar_producto', id_producto=producto.IdProducto) }}" onsubmit="return confirm('¿Seguro Que Deseas Eliminar Este Producto?');"><button type="submit" class="btn-admin-eliminar"><i class="fa-solid fa-trash"></i> Eliminar</button></form></td></tr>
+{% endfor %}
 
-        .lista-admin-simple {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 12px;
-            margin-top: 15px;
-        }
-
-        .item-admin-simple {
-            background: #f8f9fa;
-            padding: 12px;
-            border-radius: 10px;
-            border-left: 4px solid #ff6600;
-        }
-
-        .acciones-admin {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        @media (max-width: 768px) {
-            .tabla-admin {
-                font-size: 13px;
-            }
-        }
-    </style>
-</head>
-
-<body>
-
-<nav class="barra-navegacion">
-    <div class="bloque-marca">
-        <a href="{{ url_for('index') }}" class="enlace-home">
-            <i class="fa-solid fa-store icono-tienda-logo"></i>
-            <h1 class="logo-texto-principal">Minimarkt <span>Damir</span></h1>
-        </a>
-    </div>
-
-    <ul class="lista-enlaces-navegacion">
-        <li><a href="{{ url_for('admin_clientes') }}" class="enlace-menu"><i class="fa-solid fa-users"></i> Clientes</a></li>
-        <li><a href="{{ url_for('admin_productos') }}" class="enlace-menu"><i class="fa-solid fa-box"></i> Productos</a></li>
-        <li><a href="{{ url_for('admin_logout') }}" class="btn-ingresar-login"><i class="fa-solid fa-right-from-bracket"></i> Cerrar Admin</a></li>
-    </ul>
-</nav>
-
-<main class="contenedor-tienda">
-
-    <section class="hero-admin-dashboard">
-        <p>Panel Interactivo</p>
-        <h2>Dashboard De Productos</h2>
-        <p>Visualiza Productos, Pasillos, Precios, Imágenes Y Pagos Más Usados.</p>
-    </section>
-
-    {% with mensajes = get_flashed_messages() %}
-        {% if mensajes %}
-            <div class="mensaje-flash">
-                {{ mensajes[0] }}
-            </div>
-        {% endif %}
-    {% endwith %}
-
-    <section class="dashboard-falabella-grid">
-        <div class="metric-card">
-            <h3>Total Productos</h3>
-            <strong>{{ total_productos }}</strong>
-            <p>Click Para Ver Todos</p>
-        </div>
-
-        <div class="metric-card">
-            <h3>Económicos</h3>
-            <strong>{{ productos_economicos }}</strong>
-            <p>Menor O Igual A S/ 5</p>
-        </div>
-
-        <div class="metric-card">
-            <h3>Precio Promedio</h3>
-            <strong>S/ {{ '%.2f'|format(precio_promedio) }}</strong>
-            <p>Promedio General</p>
-        </div>
-
-        <div class="metric-card">
-            <h3>Pasillos Activos</h3>
-            <strong>{{ total_pasillos }}</strong>
-            <p>Pasillos Registrados</p>
-        </div>
-    </section>
-
-    <section class="panel-admin-seccion">
-        <h3><i class="fa-solid fa-layer-group"></i> Productos Por Pasillo</h3>
-
-        <div class="lista-admin-simple">
-            {% for item in productos_por_pasillo %}
-                <div class="item-admin-simple">
-                    <strong>{{ item.Pasillo }}</strong>
-                    <p>{{ item.Total }} Productos</p>
-                </div>
-            {% endfor %}
-        </div>
-    </section>
-
-    <section class="panel-admin-seccion">
-        <h3><i class="fa-solid fa-clock"></i> Últimos Productos</h3>
-
-        <div class="lista-admin-simple">
-            {% for producto in ultimos_productos %}
-                <div class="item-admin-simple">
-                    <strong>{{ producto.Nombre }}</strong>
-                    <p>{{ producto.Marca }} - S/ {{ producto.Precio }}</p>
-                </div>
-            {% endfor %}
-        </div>
-    </section>
-
-    <section class="panel-admin-seccion">
-        <h2><i class="fa-solid fa-plus"></i> Agregar Producto</h2>
-
-        <form action="{{ url_for('admin_productos') }}" method="POST" enctype="multipart/form-data" class="form-admin-grid">
-            <input type="text" name="nombre" placeholder="Nombre" required>
-            <input type="text" name="marca" placeholder="Marca" required>
-            <input type="number" step="0.01" name="precio" placeholder="Precio" required>
-
-            <select name="pasillo" required>
-                <option value="">Seleccionar Pasillo</option>
-                <option value="Abarrotes">Abarrotes</option>
-                <option value="Bebidas">Bebidas</option>
-                <option value="Desayuno">Desayuno</option>
-                <option value="Snacks">Snacks</option>
-                <option value="Limpieza">Limpieza</option>
-                <option value="Lácteos">Lácteos</option>
-                <option value="Cuidado Personal">Cuidado Personal</option>
-                <option value="Conservas">Conservas</option>
-                <option value="Carnes">Carnes</option>
-                <option value="Frutas Y Verduras">Frutas Y Verduras</option>
-            </select>
-
-            <input type="text" name="imagen" placeholder="img/productos/imagen.svg">
-            <input type="file" name="imagen_archivo" accept="image/*">
-
-            <button type="submit" class="btn-admin">Agregar Producto</button>
-        </form>
-    </section>
-
-    <section class="panel-admin-seccion">
-        <h2><i class="fa-solid fa-boxes-stacked"></i> Productos Registrados</h2>
-
-        <table class="tabla-admin">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Vista</th>
-                    <th>Nombre</th>
-                    <th>Marca</th>
-                    <th>Precio</th>
-                    <th>Pasillo</th>
-                    <th>Imagen</th>
-                    <th>Cambiar Imagen</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-
-            <tbody>
-                {% for producto in productos %}
-                <tr>
-                    <td>{{ producto.IdProducto }}</td>
-
-                    <td>
-                        {% if producto.Imagen %}
-                            <img src="{{ url_for('static', filename=producto.Imagen) }}" alt="{{ producto.Nombre }}">
-                        {% endif %}
-                    </td>
-
-                    <form id="editar-producto-{{ producto.IdProducto }}" action="{{ url_for('admin_editar_producto', id_producto=producto.IdProducto) }}" method="POST" enctype="multipart/form-data"></form>
-
-                    <td>
-                        <input form="editar-producto-{{ producto.IdProducto }}" type="text" name="nombre" value="{{ producto.Nombre }}" required>
-                    </td>
-
-                    <td>
-                        <input form="editar-producto-{{ producto.IdProducto }}" type="text" name="marca" value="{{ producto.Marca }}" required>
-                    </td>
-
-                    <td>
-                        <input form="editar-producto-{{ producto.IdProducto }}" type="number" step="0.01" name="precio" value="{{ producto.Precio }}" required>
-                    </td>
-
-                    <td>
-                        <select form="editar-producto-{{ producto.IdProducto }}" name="pasillo" required>
-                            <option value="Abarrotes" {% if producto.Pasillo == 'Abarrotes' %}selected{% endif %}>Abarrotes</option>
-                            <option value="Bebidas" {% if producto.Pasillo == 'Bebidas' %}selected{% endif %}>Bebidas</option>
-                            <option value="Desayuno" {% if producto.Pasillo == 'Desayuno' %}selected{% endif %}>Desayuno</option>
-                            <option value="Snacks" {% if producto.Pasillo == 'Snacks' %}selected{% endif %}>Snacks</option>
-                            <option value="Limpieza" {% if producto.Pasillo == 'Limpieza' %}selected{% endif %}>Limpieza</option>
-                            <option value="Lácteos" {% if producto.Pasillo == 'Lácteos' %}selected{% endif %}>Lácteos</option>
-                            <option value="Cuidado Personal" {% if producto.Pasillo == 'Cuidado Personal' %}selected{% endif %}>Cuidado Personal</option>
-                            <option value="Conservas" {% if producto.Pasillo == 'Conservas' %}selected{% endif %}>Conservas</option>
-                            <option value="Carnes" {% if producto.Pasillo == 'Carnes' %}selected{% endif %}>Carnes</option>
-                            <option value="Frutas Y Verduras" {% if producto.Pasillo == 'Frutas Y Verduras' %}selected{% endif %}>Frutas Y Verduras</option>
-                        </select>
-                    </td>
-
-                    <td>
-                        <input form="editar-producto-{{ producto.IdProducto }}" type="text" name="imagen" value="{{ producto.Imagen }}" required>
-                    </td>
-
-                    <td>
-                        <input form="editar-producto-{{ producto.IdProducto }}" type="file" name="imagen_archivo" accept="image/*">
-                    </td>
-
-                    <td>
-                        <div class="acciones-admin">
-                            <button form="editar-producto-{{ producto.IdProducto }}" type="submit" class="btn-admin">
-                                Guardar
-                            </button>
-
-                            <form action="{{ url_for('admin_eliminar_producto', id_producto=producto.IdProducto) }}" method="POST">
-                                <button type="submit" class="btn-admin btn-eliminar">Eliminar</button>
-                            </form>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </section>
-
-</main>
-
-<footer>
-    <p>© 2026 Minimarkt Damir. Todos Los Derechos Reservados.</p>
-</footer>
-
-</body>
-</html>
+</table></div></section></main><footer><p>&copy; 2026 Minimarkt Damir. Todos Los Derechos Reservados.</p></footer><script src="{{ url_for('static', filename='script.js') }}"></script></body></html>
