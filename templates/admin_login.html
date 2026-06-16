@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Minimarkt Damir</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<main class="contenedor-tienda">
+    <div class="contenedor-autenticacion">
+
+        <h2>Acceso Administrador</h2>
+
+        <p>Escribe "admin" para acceder al administrador.</p>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alerta-error">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+
+            <div class="grupo-formulario">
+                <label>Contraseña</label>
+
+                <input type="password"
+                       name="clave_admin"
+                       class="input-formulario"
+                       required>
+            </div>
+
+            <button class="btn-formulario-primario">
+                Ingresar
+            </button>
+
+        </form>
+
+    </div>
+</main>
+
+</body>
+</html>

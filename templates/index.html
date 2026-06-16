@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimarkt Damir</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=inter:wght@300;400;500;600;700&family=poppins:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<header class="barra-navegacion">
+    <div class="bloque-marca">
+        <a href="{{ url_for('index') }}" class="enlace-home">
+            <i class="fa-solid fa-store icono-tienda-logo"></i>
+            <h1 class="logo-texto-principal">Minimarkt <span>Damir</span></h1>
+        </a>
+    </div>
+
+    {% if session.get('admin') %}
+    <div class="menu-admin-junto-logo">
+        <a href="{{ url_for('admin_clientes') }}" class="enlace-admin-superior">
+            <i class="fa-solid fa-users"></i> Clientes
+        </a>
+        <a href="{{ url_for('admin_productos') }}" class="enlace-admin-superior">
+            <i class="fa-solid fa-box"></i> Productos
+        </a>
+    </div>
+    {% endif %}
+
+    <nav class="menu-navegacion-derecha">
+        <ul class="lista-enlaces-navegacion">
+            <li><a href="{{ url_for('index') }}" class="enlace-menu"><i class="fa-solid fa-house"></i> Inicio</a></li>
+            <li><a href="{{ url_for('carrito') }}" class="enlace-menu posicion-relativa"><i class="fa-solid fa-basket-shopping"></i> Mi Carrito <span id="contador-items-carrito-badge" class="badge-cantidad-carrito">0</span></a></li>
+            
+            <li>
+    <div class="bloque-usuario-menu">
+
+        {% if session.get('admin') %}
+
+            <a href="{{ url_for('admin_logout') }}" class="enlace-menu">
+                <i class="fa-solid fa-right-from-bracket"></i> cerrar admin
+            </a>
+
+        {% elif session.get('usuario_nombre') %}
+
+            <button class="btn-ingresar-login">
+                <i class="fa-solid fa-user"></i>
+                {{ session['usuario_nombre'] }}
+            </button>
+
+            <div class="menu-desplegable-usuario">
+                <a href="{{ url_for('perfil') }}">mi perfil</a>
+                <a href="{{ url_for('logout') }}">cerrar sesión</a>
+            </div>
+
+            <a href="{{ url_for('admin_login') }}" class="btn-admin-navbar">
+                <i class="fa-solid fa-user-shield"></i> Admin
+            </a>
+
+        {% else %}
+
+            <a href="{{ url_for('login') }}" class="btn-ingresar-login">
+                <i class="fa-solid fa-right-to-bracket"></i>
+                Iniciar Sesión / Registrarse
+            </a>
+
+            <a href="{{ url_for('admin_login') }}" class="btn-admin-navbar">
+                <i class="fa-solid fa-user-shield"></i> Admin
+            </a>
+
+        {% endif %}
+
+    </div>
+</li>
+        </ul>
+    </nav>
+</header>
+
+    <main class="contenedor-tienda flex-column-layout">
+        <section class="banner-promocional-principal">
+            <div class="contenido-banner-texto">
+                <h2>¡todas tus compras a un solo clic!</h2>
+                <p>encuentra productos frescos, abarrotes, bebidas y artículos de limpieza al mejor precio.</p>
+                <a href="#seccion-categorias-ancla" class="btn-explorar-tienda">ver pasillos <i class="fa-solid fa-arrow-down"></i></a>
+            </div>
+        </section>
+
+        <section id="seccion-categorias-ancla" class="seccion-categorias-tienda">
+            <h2 class="titulo-seccion-general"><i class="fa-solid fa-shop"></i> explora nuestros pasillos</h2>
+            
+            <div class="grilla-categorias-accesos">
+                {% set iconos = {
+                    'Abarrotes':'fa-mortar-pestle', 'Bebidas':'fa-wine-glass', 'Desayuno':'fa-egg',
+                    'Snacks':'fa-cookie', 'Limpieza':'fa-soap', 'Lácteos':'fa-cheese',
+                    'Cuidado Personal':'fa-pump-soap', 'Conservas':'fa-can-food', 'Carnes':'fa-drumstick-bite',
+                    'Frutas Y Verduras':'fa-apple-whole'
+                } %}
+                {% for pasillo in pasillos %}
+                    {% set ruta = pasillo.lower().replace('á','a').replace('é','e').replace('í','i').replace('ó','o').replace('ú','u').replace(' ', '-') %}
+                    <a href="{{ url_for('pasillo_dinamico', nombre_pasillo=ruta) }}" class="tarjeta-categoria-enlace">
+                        <div class="categoria-icono-circulo"><i class="fa-solid {{ iconos.get(pasillo, 'fa-shop') }}"></i></div>
+                        <h3>{{ pasillo }}</h3>
+                        <p>Productos Actualizados Desde El Administrador</p>
+                    </a>
+                {% endfor %}
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Minimarkt Damir. Todos Los Derechos Reservados.</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

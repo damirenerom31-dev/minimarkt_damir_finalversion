@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Minimarkt Damir</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="contenedor-tienda">
+        <div class="contenedor-autenticacion">
+            <h2>iniciar sesión</h2>
+
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                {% for message in messages %}
+                  <div class="alerta-error">{{ message }}</div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+
+            <form action="{{ url_for('login') }}" method="post">
+
+                <div class="grupo-formulario">
+                    <label>correo electrónico</label>
+                    <input type="email"
+                           name="correo"
+                           class="input-formulario"
+                           required
+                           placeholder="ejemplo@correo.com">
+                </div>
+
+                <div class="grupo-formulario">
+                    <label>contraseña</label>
+                    <input type="password"
+                           name="contraseña"
+                           class="input-formulario"
+                           required
+                           placeholder="ingresa tu contraseña">
+                </div>
+
+                <button type="submit" class="btn-formulario-primario">
+                    ingresar
+                </button>
+
+            </form>
+
+            <div class="enlace-cambio-auth">
+                ¿no tienes una cuenta?
+                <a href="{{ url_for('registro') }}">
+                    regístrate aquí
+                </a>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

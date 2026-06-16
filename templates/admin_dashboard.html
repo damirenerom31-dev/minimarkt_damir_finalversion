@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Minimarkt Damir</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<main class="contenedor-tienda">
+
+    <div class="contenedor-autenticacion">
+
+        <h2>Panel Administrador</h2>
+
+        <a href="{{ url_for('admin_clientes') }}"
+           class="btn-formulario-primario">
+           Clientes
+        </a>
+
+        <br><br>
+
+        <a href="{{ url_for('admin_productos') }}"
+           class="btn-formulario-primario">
+           Productos
+        </a>
+
+        <br><br>
+
+        <a href="{{ url_for('admin_logout') }}">
+            Cerrar sesión
+        </a>
+
+    </div>
+
+</main>
+
+</body>
+</html>

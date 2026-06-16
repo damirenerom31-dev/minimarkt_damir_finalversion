@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Minimarkt Damir</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="contenedor-tienda">
+        <div class="contenedor-autenticacion">
+            <h2>crear cuenta</h2>
+
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                {% for message in messages %}
+                  <div class="alerta-error">{{ message }}</div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+
+            <form action="{{ url_for('registro') }}" method="post">
+
+                <div class="grupo-formulario">
+                    <label>nombre</label>
+                    <input type="text"
+                           name="nombre"
+                           class="input-formulario"
+                           required
+                           placeholder="tu nombre">
+                </div>
+
+                <div class="grupo-formulario">
+                    <label>apellido</label>
+                    <input type="text"
+                           name="apellido"
+                           class="input-formulario"
+                           required
+                           placeholder="tu apellido">
+                </div>
+
+                <div class="grupo-formulario">
+                    <label>número de celular</label>
+                    <input type="tel"
+                           name="celular"
+                           class="input-formulario"
+                           required
+                           placeholder="ej. 987654321">
+                </div>
+
+                <div class="grupo-formulario">
+                    <label>correo electrónico</label>
+                    <input type="email"
+                           name="correo"
+                           class="input-formulario"
+                           required
+                           placeholder="ejemplo@correo.com">
+                </div>
+
+                <div class="grupo-formulario">
+                    <label>dirección de entrega</label>
+                    <input type="text"
+                           name="direccion"
+                           class="input-formulario"
+                           required
+                           placeholder="tu dirección completa">
+                </div>
+
+                <!-- NUEVO -->
+                <div class="grupo-formulario">
+                    <label>contraseña</label>
+                    <input type="password"
+                           name="contraseña"
+                           class="input-formulario"
+                           required
+                           placeholder="ingresa una contraseña">
+                </div>
+
+                <!-- NUEVO -->
+                <div class="grupo-formulario">
+                    <label>confirmar contraseña</label>
+                    <input type="password"
+                           name="confirmar_contraseña"
+                           class="input-formulario"
+                           required
+                           placeholder="vuelve a escribir tu contraseña">
+                </div>
+
+                <button type="submit" class="btn-formulario-primario">
+                    crear mi cuenta
+                </button>
+
+            </form>
+
+            <div class="enlace-cambio-auth">
+                ¿ya tienes cuenta?
+                <a href="{{ url_for('login') }}">
+                    inicia sesión
+                </a>
+            </div>
+
+        </div>
+    </main>
+</body>
+</html>

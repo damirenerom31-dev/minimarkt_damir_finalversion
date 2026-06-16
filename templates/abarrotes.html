@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimarkt Damir</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=inter:wght@300;400;500;600;700&family=poppins:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<header class="barra-navegacion">
+    <div class="bloque-marca">
+        <a href="{{ url_for('index') }}" class="enlace-home">
+            <i class="fa-solid fa-store icono-tienda-logo"></i>
+            <h1 class="logo-texto-principal">Minimarkt <span>Damir</span></h1>
+        </a>
+    </div>
+
+    {% if session.get('admin') %}
+    <div class="menu-admin-junto-logo">
+        <a href="{{ url_for('admin_clientes') }}" class="enlace-admin-superior">
+            <i class="fa-solid fa-users"></i> Clientes
+        </a>
+        <a href="{{ url_for('admin_productos') }}" class="enlace-admin-superior">
+            <i class="fa-solid fa-box"></i> Productos
+        </a>
+    </div>
+    {% endif %}
+
+    <nav class="menu-navegacion-derecha">
+        <ul class="lista-enlaces-navegacion">
+            <li><a href="{{ url_for('index') }}" class="enlace-menu"><i class="fa-solid fa-house"></i> inicio</a></li>
+            <li><a href="{{ url_for('carrito') }}" class="enlace-menu posicion-relativa"><i class="fa-solid fa-basket-shopping"></i> mi carrito <span id="contador-items-carrito-badge" class="badge-cantidad-carrito">0</span></a></li>
+            
+            <li>
+                <div class="bloque-usuario-menu">
+                    {% if session.get('usuario_nombre') %}
+                        <button class="btn-ingresar-login">
+                            <i class="fa-solid fa-user"></i> {{ session['usuario_nombre'] }}
+                        </button>
+                        <div class="menu-desplegable-usuario">
+                            <a href="{{ url_for('perfil') }}">mi perfil</a>
+                            <a href="{{ url_for('logout') }}">cerrar sesión</a>
+                        </div>
+                    {% else %}
+                        <a href="{{ url_for('login') }}" class="btn-ingresar-login">
+                            <i class="fa-solid fa-right-to-bracket"></i> iniciar sesión / registrarse
+                        </a>
+                    {% endif %}
+                    {% if not session.get('admin') %}
+                        <a href="{{ url_for('admin_login') }}" class="btn-admin-navbar">
+                            <i class="fa-solid fa-user-shield"></i> Admin
+                        </a>
+                    {% endif %}
+                </div>
+            </li>
+        </ul>
+    </nav>
+</header>
+
+    <main class="contenedor-tienda flex-column-layout">
+        <section class="seccion-productos">
+            <div class="encabezado-pasillo">
+                <h2 class="titulo-pasillo"><i class="fa-solid fa-mortar-pestle me-2"></i>pasillo de abarrotes</h2>
+                <p class="subtitulo-pasillo">los esenciales para la cocina de cada día</p>
+            </div>
+
+            <div class="grilla-productos">
+
+    {% for producto in productos %}
+
+    <div class="tarjeta-producto">
+
+        <div class="producto-imagen">
+            <img src="{{ url_for('static',
+                                 filename='img/' + producto.Imagen) }}"
+                 alt="{{ producto.Nombre }}">
+        </div>
+
+        <div class="producto-detalles">
+
+            <span class="marca">
+                {{ producto.Marca }}
+            </span>
+
+            <h3 class="nombre">
+                {{ producto.Nombre }}
+            </h3>
+
+            <div class="bloque-precio-accion">
+
+                <span class="precio-actual">
+                    s/ {{ producto.Precio }}
+                </span>
+
+                <button type="button"
+                        class="btn-agregar">
+
+                    <i class="fa-solid fa-plus"></i>
+
+                    agregar
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    {% endfor %}
+
+</div>
+    <footer>
+        <p>&copy; 2026 Minimarkt Damir. todos los derechos reservados.</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

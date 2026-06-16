@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimarkt Damir</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=inter:wght@300;400;500;600;700&family=poppins:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<header class="barra-navegacion">
+    <div class="bloque-marca">
+        <a href="{{ url_for('index') }}" class="enlace-home">
+            <i class="fa-solid fa-store icono-tienda-logo"></i>
+            <h1 class="logo-texto-principal">Minimarkt <span>Damir</span></h1>
+        </a>
+    </div>
+
+    {% if session.get('admin') %}
+    <div class="menu-admin-junto-logo">
+        <a href="{{ url_for('admin_clientes') }}" class="enlace-admin-superior">
+            <i class="fa-solid fa-users"></i> Clientes
+        </a>
+        <a href="{{ url_for('admin_productos') }}" class="enlace-admin-superior">
+            <i class="fa-solid fa-box"></i> Productos
+        </a>
+    </div>
+    {% endif %}
+
+    <nav class="menu-navegacion-derecha">
+        <ul class="lista-enlaces-navegacion">
+            <li><a href="{{ url_for('index') }}" class="enlace-menu"><i class="fa-solid fa-house"></i> inicio</a></li>
+            <li><a href="{{ url_for('carrito') }}" class="enlace-menu posicion-relativa"><i class="fa-solid fa-basket-shopping"></i> mi carrito <span id="contador-items-carrito-badge" class="badge-cantidad-carrito">0</span></a></li>
+            
+            <li>
+                <div class="bloque-usuario-menu">
+                    {% if session.get('usuario_nombre') %}
+                        <button class="btn-ingresar-login">
+                            <i class="fa-solid fa-user"></i> {{ session['usuario_nombre'] }}
+                        </button>
+                        <div class="menu-desplegable-usuario">
+                            <a href="{{ url_for('perfil') }}">mi perfil</a>
+                            <a href="{{ url_for('logout') }}">cerrar sesión</a>
+                        </div>
+                    {% else %}
+                        <a href="{{ url_for('login') }}" class="btn-ingresar-login">
+                            <i class="fa-solid fa-right-to-bracket"></i> iniciar sesión / registrarse
+                        </a>
+                    {% endif %}
+                    {% if not session.get('admin') %}
+                        <a href="{{ url_for('admin_login') }}" class="btn-admin-navbar">
+                            <i class="fa-solid fa-user-shield"></i> Admin
+                        </a>
+                    {% endif %}
+                </div>
+            </li>
+        </ul>
+    </nav>
+</header>
+
+    <main class="contenedor-tienda flex-column-layout">
+
+        <section class="seccion-productos">
+            <h2 class="titulo-seccion-general"><i class="fa-solid fa-wine-glass"></i> pasillo de bebidas refrescantes</h2>
+            
+            <div class="grilla-productos">
+                <div class="tarjeta-producto">
+                    <div class="producto-imagen">
+                        <img src="{{ url_for('static', filename='img/bebidas/cocacola600.jpg') }}" alt="coca cola de 600ml">
+                    </div>
+                    <div class="cuerpo-tarjeta-detalles">
+                        <span class="marca">coca cola</span>
+                        <h3 class="nombre">coca cola de 600ml</h3>
+                        <div class="bloque-precio-accion">
+                            <span class="precio-actual">s/ 3.00</span>
+                            <button class="btn-agregar" data-nombre="coca cola de 600ml" data-precio="3.00"><i class="fa-solid fa-plus"></i> agregar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tarjeta-producto">
+                    <div class="producto-imagen">
+                        <img src="{{ url_for('static', filename='img/bebidas/incacola600.jpg') }}" alt="inca kola de 600ml">
+                    </div>
+                    <div class="cuerpo-tarjeta-detalles">
+                        <span class="marca">inca kola</span>
+                        <h3 class="nombre">inca kola de 600ml</h3>
+                        <div class="bloque-precio-accion">
+                            <span class="precio-actual">s/ 3.00</span>
+                            <button class="btn-agregar" data-nombre="inca kola de 600ml" data-precio="3.00"><i class="fa-solid fa-plus"></i> agregar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tarjeta-producto">
+                    <div class="producto-imagen">
+                        <img src="{{ url_for('static', filename='img/pepsi1l.png') }}" alt="pepsi de 1l">
+                    </div>
+                    <div class="cuerpo-tarjeta-detalles">
+                        <span class="marca">pepsi</span>
+                        <h3 class="nombre">pepsi de 1l</h3>
+                        <div class="bloque-precio-accion">
+                            <span class="precio-actual">s/ 4.50</span>
+                            <button class="btn-agregar" data-nombre="pepsi de 1l" data-precio="4.50"><i class="fa-solid fa-plus"></i> agregar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tarjeta-producto">
+                    <div class="producto-imagen">
+                        <img src="{{ url_for('static', filename='img/sanluis1l.png') }}" alt="agua san luis sin gas de 1l">
+                    </div>
+                    <div class="cuerpo-tarjeta-detalles">
+                        <span class="marca">san luis</span>
+                        <h3 class="nombre">agua san luis sin gas de 1l</h3>
+                        <div class="bloque-precio-accion">
+                            <span class="precio-actual">s/ 2.00</span>
+                            <button class="btn-agregar" data-nombre="agua san luis sin gas de 1l" data-precio="2.00"><i class="fa-solid fa-plus"></i> agregar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tarjeta-producto">
+                    <div class="producto-imagen">
+                        <img src="{{ url_for('static', filename='img/frugosdurazno1l.png') }}" alt="frugos del valle durazno 1l">
+                    </div>
+                    <div class="cuerpo-tarjeta-detalles">
+                        <span class="marca">frugos del valle</span>
+                        <h3 class="nombre">frugos del valle durazno 1l</h3>
+                        <div class="bloque-precio-accion">
+                            <span class="precio-actual">s/ 4.20</span>
+                            <button class="btn-agregar" data-nombre="frugos del valle durazno 1l" data-precio="4.20"><i class="fa-solid fa-plus"></i> agregar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tarjeta-producto">
+                    <div class="producto-imagen">
+                        <img src="{{ url_for('static', filename='img/voltazul.png') }}" alt="volt azul">
+                    </div>
+                    <div class="cuerpo-tarjeta-detalles">
+                        <span class="marca">volt</span>
+                        <h3 class="nombre">volt azul</h3>
+                        <div class="bloque-precio-accion">
+                            <span class="precio-actual">s/ 2.50</span>
+                            <button class="btn-agregar" data-nombre="volt azul" data-precio="2.50"><i class="fa-solid fa-plus"></i> agregar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Minimarkt Damir. todos los derechos reservados.</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
