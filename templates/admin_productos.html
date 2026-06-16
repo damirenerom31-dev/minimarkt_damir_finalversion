@@ -1,6 +1,161 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Minimarkt Damir</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"><link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head><body>
-<header class="barra-navegacion barra-saga"><div class="bloque-marca"><a href="{{ url_for('index') }}" class="enlace-home"><i class="fa-solid fa-store icono-tienda-logo"></i><h1 class="logo-texto-principal">Minimarkt <span>Damir</span></h1></a></div><div class="menu-admin-junto-logo"><a href="{{ url_for('admin_clientes') }}" class="enlace-admin-superior"><i class="fa-solid fa-users"></i> Clientes</a><a href="{{ url_for('admin_productos') }}" class="enlace-admin-superior activo"><i class="fa-solid fa-box"></i> Productos</a></div><nav class="menu-navegacion-derecha"><ul class="lista-enlaces-navegacion"><li><a href="{{ url_for('index') }}" class="enlace-menu"><i class="fa-solid fa-house"></i> Inicio</a></li><li><a href="{{ url_for('admin_logout') }}" class="enlace-menu"><i class="fa-solid fa-right-from-bracket"></i> Cerrar Admin</a></li></ul></nav></header>
-<main class="contenedor-tienda flex-column-layout admin-page"><section class="hero-admin-dashboard"><div><p class="etiqueta-dashboard">Panel Interactivo</p><h2>Dashboard De Productos</h2><span>Visualiza Productos, Pasillos, Precios, Imágenes Y Pagos Más Usados.</span></div></section>{% with mensajes = get_flashed_messages() %}{% if mensajes %}<div class="mensaje-admin">{{ mensajes[0] }}</div>{% endif %}{% endwith %}
-<section class="dashboard-falabella-grid"><article class="metric-card" data-admin-filter="todos"><i class="fa-solid fa-boxes-stacked"></i><span>Total Productos</span><strong>{{ total_productos }}</strong><small>Click Para Ver Todos</small></article><article class="metric-card" data-admin-filter="economicos"><i class="fa-solid fa-tags"></i><span>Económicos</span><strong>{{ productos_economicos }}</strong><small>Menor O Igual A S/ 5</small></article><article class="metric-card"><i class="fa-solid fa-chart-line"></i><span>Precio Promedio</span><strong>S/ {{ '%.2f'|format(precio_promedio) }}</strong><small>{{ total_pasillos }} Pasillos Activos</small></article><article class="metric-card grande"><h3>Productos Por Pasillo</h3><div class="mini-bars">{% for item in productos_por_pasillo %}<button class="bar-item" data-admin-filter="pasillo-{{ item.Pasillo }}"><span>{{ item.Pasillo }}</span><b style="height: {{ 25 + item.Total * 5 }}px"></b><small>{{ item.Total }}</small></button>{% endfor %}</div></article><article class="metric-card grande lista-reciente"><h3>Últimos Productos</h3>{% for producto in ultimos_productos %}<button class="fila-reciente" data-admin-filter="nombre-{{ producto.Nombre }}"><img src="{{ url_for('static', filename=producto.Imagen) }}" alt="{{ producto.Nombre }}"><span>{{ producto.Nombre }}</span><small>{{ producto.Marca }} - S/ {{ producto.Precio }}</small></button>{% endfor %}</article><article class="metric-card grande"><h3>Métodos De Pago Más Usados</h3><div class="mini-bars pagos-dashboard"><button class="bar-item"><span>Visa Crédito</span><b data-pago-bar="Tarjeta De Crédito Visa" style="height:45px"></b><small data-pago-total="Tarjeta De Crédito Visa">0</small></button><button class="bar-item"><span>Visa Débito</span><b data-pago-bar="Tarjeta De Débito Visa" style="height:35px"></b><small data-pago-total="Tarjeta De Débito Visa">0</small></button><button class="bar-item"><span>Yape</span><b data-pago-bar="Yape" style="height:70px"></b><small data-pago-total="Yape">0</small></button><button class="bar-item"><span>Plin</span><b data-pago-bar="Plin" style="height:55px"></b><small data-pago-total="Plin">0</small></button></div></article></section>
-<section class="panel-admin-seccion panel-elegante"><h2><i class="fa-solid fa-circle-plus"></i> Agregar Producto</h2><form method="POST" enctype="multipart/form-data" class="formulario-admin-grid"><input type="text" name="nombre" placeholder="Nombre" required><input type="text" name="marca" placeholder="Marca" required><input type="number" step="0.01" min="0" name="precio" placeholder="Precio" required><input list="lista-pasillos" name="pasillo" placeholder="Pasillo" required><datalist id="lista-pasillos"><option>Abarrotes</option><option>Bebidas</option><option>Desayuno</option><option>Snacks</option><option>Limpieza</option><option>Lácteos</option><option>Cuidado Personal</option><option>Conservas</option><option>Carnes</option><option>Frutas Y Verduras</option></datalist><input type="text" name="imagen" placeholder="Ruta O Usa El Botón Para Subir Imagen"><input type="file" name="imagen_archivo" accept="image/*"><button type="submit" class="btn-formulario-primario">Agregar Producto</button></form></section>
-<section class="panel-admin-seccion panel-elegante"><div class="cabecera-panel-tabla"><h2><i class="fa-solid fa-box"></i> Productos Registrados</h2><input id="buscador-admin" class="buscador-admin" type="text" placeholder="Buscar Producto..."></div><div class="tabla-admin-contenedor"><table class="tabla-admin tabla-admin-edicion" id="tabla-admin-datos"><tr><th>ID</th><th>Vista</th><th>Nombre</th><th>Marca</th><th>Precio</th><th>Pasillo</th><th>Imagen</th><th>Cambiar Imagen</th><th>Acciones</th></tr>{% for producto in productos %}<tr data-id="{{ producto.IdProducto }}" data-precio="{{ producto.Precio }}" data-pasillo="{{ producto.Pasillo }}" data-nombre="{{ producto.Nombre }}"><td>{{ producto.IdProducto }}</td><td><img class="mini-producto-admin" src="{{ url_for('static', filename=producto.Imagen) }}" alt="{{ producto.Nombre }}"></td><td><input form="editar-producto-{{ producto.IdProducto }}" type="text" name="nombre" value="{{ producto.Nombre }}" required></td><td><input form="editar-producto-{{ producto.IdProducto }}" type="text" name="marca" value="{{ producto.Marca }}" required></td><td><input form="editar-producto-{{ producto.IdProducto }}" type="number" step="0.01" min="0" name="precio" value="{{ producto.Precio }}" required></td><td><input form="editar-producto-{{ producto.IdProducto }}" list="lista-pasillos" name="pasillo" value="{{ producto.Pasillo }}" required></td><td><input form="editar-producto-{{ producto.IdProducto }}" type="text" name="imagen" value="{{ producto.Imagen }}" required></td><td><input form="editar-producto-{{ producto.IdProducto }}" type="file" name="imagen_archivo" accept="image/*"></td><td class="celda-acciones-admin"><form id="editar-producto-{{ producto.IdProducto }}" method="POST" enctype="multipart/form-data" action="{{ url_for('admin_editar_producto', id_producto=producto.IdProducto) }}"></form><button form="editar-producto-{{ producto.IdProducto }}" type="submit" class="btn-admin-guardar"><i class="fa-solid fa-floppy-disk"></i> Guardar</button><form method="POST" action="{{ url_for('admin_eliminar_producto', id_producto=producto.IdProducto) }}" onsubmit="return confirm('¿Seguro Que Deseas Eliminar Este Producto?');"><button type="submit" class="btn-admin-eliminar"><i class="fa-solid fa-trash"></i> Eliminar</button></form></td></tr>{% endfor %}</table></div></section></main><footer><p>&copy; 2026 Minimarkt Damir. Todos Los Derechos Reservados.</p></footer><script src="{{ url_for('static', filename='script.js') }}"></script></body></html>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Productos - Minimarkt Damir</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<nav>
+    <a href="{{ url_for('index') }}">Inicio</a>
+    <a href="{{ url_for('admin_clientes') }}">Clientes</a>
+    <a href="{{ url_for('admin_productos') }}">Productos</a>
+    <a href="{{ url_for('admin_logout') }}">Cerrar Admin</a>
+</nav>
+
+<h1>Dashboard De Productos</h1>
+<p>Visualiza Productos, Pasillos, Precios, Imágenes Y Pagos Más Usados.</p>
+
+{% with mensajes = get_flashed_messages() %}
+    {% if mensajes %}
+        <div class="mensaje">{{ mensajes[0] }}</div>
+    {% endif %}
+{% endwith %}
+
+<section>
+    <h2>Resumen</h2>
+    <p>Total Productos: {{ total_productos }}</p>
+    <p>Económicos: {{ productos_economicos }}</p>
+    <p>Precio Promedio: S/ {{ '%.2f'|format(precio_promedio) }}</p>
+    <p>Pasillos Activos: {{ total_pasillos }}</p>
+</section>
+
+<section>
+    <h2>Productos Por Pasillo</h2>
+    {% for item in productos_por_pasillo %}
+        <p>{{ item.Pasillo }}: {{ item.Total }}</p>
+    {% endfor %}
+</section>
+
+<section>
+    <h2>Últimos Productos</h2>
+    {% for producto in ultimos_productos %}
+        <p>{{ producto.Nombre }} - {{ producto.Marca }} - S/ {{ producto.Precio }}</p>
+    {% endfor %}
+</section>
+
+<section>
+    <h2>Agregar Producto</h2>
+
+    <form action="{{ url_for('admin_productos') }}" method="POST" enctype="multipart/form-data">
+        <input type="text" name="nombre" placeholder="Nombre" required>
+        <input type="text" name="marca" placeholder="Marca" required>
+        <input type="number" step="0.01" name="precio" placeholder="Precio" required>
+
+        <select name="pasillo" required>
+            <option value="">Seleccionar Pasillo</option>
+            <option value="Abarrotes">Abarrotes</option>
+            <option value="Bebidas">Bebidas</option>
+            <option value="Desayuno">Desayuno</option>
+            <option value="Snacks">Snacks</option>
+            <option value="Limpieza">Limpieza</option>
+            <option value="Lácteos">Lácteos</option>
+            <option value="Cuidado Personal">Cuidado Personal</option>
+            <option value="Conservas">Conservas</option>
+            <option value="Carnes">Carnes</option>
+            <option value="Frutas Y Verduras">Frutas Y Verduras</option>
+        </select>
+
+        <input type="text" name="imagen" placeholder="Ruta de imagen, ejemplo: img/productos/arroz.svg">
+        <input type="file" name="imagen_archivo" accept="image/*">
+
+        <button type="submit">Agregar Producto</button>
+    </form>
+</section>
+
+<section>
+    <h2>Productos Registrados</h2>
+
+    <table border="1">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Vista</th>
+                <th>Nombre</th>
+                <th>Marca</th>
+                <th>Precio</th>
+                <th>Pasillo</th>
+                <th>Imagen</th>
+                <th>Cambiar Imagen</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for producto in productos %}
+            <tr>
+                <td>{{ producto.IdProducto }}</td>
+
+                <td>
+                    {% if producto.Imagen %}
+                        <img src="{{ url_for('static', filename=producto.Imagen) }}" width="60">
+                    {% endif %}
+                </td>
+
+                <form id="editar-producto-{{ producto.IdProducto }}" action="{{ url_for('admin_editar_producto', id_producto=producto.IdProducto) }}" method="POST" enctype="multipart/form-data"></form>
+
+                <td>
+                    <input form="editar-producto-{{ producto.IdProducto }}" type="text" name="nombre" value="{{ producto.Nombre }}" required>
+                </td>
+
+                <td>
+                    <input form="editar-producto-{{ producto.IdProducto }}" type="text" name="marca" value="{{ producto.Marca }}" required>
+                </td>
+
+                <td>
+                    <input form="editar-producto-{{ producto.IdProducto }}" type="number" step="0.01" name="precio" value="{{ producto.Precio }}" required>
+                </td>
+
+                <td>
+                    <select form="editar-producto-{{ producto.IdProducto }}" name="pasillo" required>
+                        <option value="Abarrotes" {% if producto.Pasillo == 'Abarrotes' %}selected{% endif %}>Abarrotes</option>
+                        <option value="Bebidas" {% if producto.Pasillo == 'Bebidas' %}selected{% endif %}>Bebidas</option>
+                        <option value="Desayuno" {% if producto.Pasillo == 'Desayuno' %}selected{% endif %}>Desayuno</option>
+                        <option value="Snacks" {% if producto.Pasillo == 'Snacks' %}selected{% endif %}>Snacks</option>
+                        <option value="Limpieza" {% if producto.Pasillo == 'Limpieza' %}selected{% endif %}>Limpieza</option>
+                        <option value="Lácteos" {% if producto.Pasillo == 'Lácteos' %}selected{% endif %}>Lácteos</option>
+                        <option value="Cuidado Personal" {% if producto.Pasillo == 'Cuidado Personal' %}selected{% endif %}>Cuidado Personal</option>
+                        <option value="Conservas" {% if producto.Pasillo == 'Conservas' %}selected{% endif %}>Conservas</option>
+                        <option value="Carnes" {% if producto.Pasillo == 'Carnes' %}selected{% endif %}>Carnes</option>
+                        <option value="Frutas Y Verduras" {% if producto.Pasillo == 'Frutas Y Verduras' %}selected{% endif %}>Frutas Y Verduras</option>
+                    </select>
+                </td>
+
+                <td>
+                    <input form="editar-producto-{{ producto.IdProducto }}" type="text" name="imagen" value="{{ producto.Imagen }}" required>
+                </td>
+
+                <td>
+                    <input form="editar-producto-{{ producto.IdProducto }}" type="file" name="imagen_archivo" accept="image/*">
+                </td>
+
+                <td>
+                    <button form="editar-producto-{{ producto.IdProducto }}" type="submit">Guardar</button>
+
+                    <form action="{{ url_for('admin_eliminar_producto', id_producto=producto.IdProducto) }}" method="POST" style="display:inline;">
+                        <button type="submit">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<footer>
+    <p>© 2026 Minimarkt Damir. Todos Los Derechos Reservados.</p>
+</footer>
+
+</body>
+</html>
