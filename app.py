@@ -237,7 +237,7 @@ def inicializar_base_datos():
             cursor.execute("""
                 INSERT INTO Clientes (Nombre, Apellido, Celular, Correo, Direccion, Contraseña, Foto)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, titulo(nombre), titulo(apellido), celular, correo, titulo(direccion), clave_hash, None)
+            """, (titulo(nombre), titulo(apellido), celular, correo, titulo(direccion), clave_hash, None))
 
     cursor.execute("SELECT COUNT(*) AS Total FROM Productos")
     total_productos = cursor.fetchone()["Total"]
@@ -247,7 +247,7 @@ def inicializar_base_datos():
             cursor.execute("""
                 INSERT INTO Productos (Nombre, Marca, Precio, Pasillo, Imagen)
                 VALUES (?, ?, ?, ?, ?)
-            """, titulo(nombre), titulo(marca), float(precio), pasillo, f'img/productos/{imagen}')
+            """, (titulo(nombre), titulo(marca), float(precio), pasillo, f'img/productos/{imagen}'))
 
     conexion.commit()
     conexion.close()
