@@ -4,20 +4,48 @@ from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from types import SimpleNamespace
-
-try:
-    import pyodbc
-except Exception:
-    pyodbc = None
-
+import sqlite3
 
 app = Flask(__name__)
 app.secret_key = 'clave_secreta_minimarket_damir_2026'
 
-app.config['UPLOAD_FOLDER_PRODUCTOS'] = str(Path(app.root_path) / 'static' / 'img' / 'productos')
-app.config['UPLOAD_FOLDER_CLIENTES'] = str(Path(app.root_path) / 'static' / 'img' / 'clientes')
+BASE_DIR = Path(app.root_path)
+DB_PATH = BASE_DIR / 'minimarket_damir.db'
+
+app.config['UPLOAD_FOLDER_PRODUCTOS'] = str(BASE_DIR / 'static' / 'img' / 'productos')
+app.config['UPLOAD_FOLDER_CLIENTES'] = str(BASE_DIR / 'static' / 'img' / 'clientes')
 
 EXTENSIONES_IMAGEN = {'png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'}
+
+
+def fila_demo(**kwargs):
+    return SimpleNamespace(**kwargs)
+
+
+def filas_a_objetos(filas):
+    return [fila_demo(**dict(fila)) for fila in filas]
+
+
+def fila_a_objeto(fila):
+    if fila is None:
+        return None
+    return fila_demo(**dict(fila))
+
+
+def obtener_conexion():
+    conexion = sqlite3.connect(DB_PATH)
+    conexion.row_factory = sqlite3.Row
+    return conexion
+
+
+def capitalizar_datos(texto):
+    if texto is None:
+        return None
+    return ' '.join(palabra.capitalize() for palabra in str(texto).strip().split())
+
+
+def titulo(texto):
+    return ' '.join(palabra.capitalize() for palabra in str(texto).split())
 
 
 def es_imagen_valida(nombre_archivo):
@@ -42,49 +70,8 @@ def guardar_imagen_subida(archivo, carpeta_config, subcarpeta):
     return f"img/{subcarpeta}/{nombre_final}"
 
 
-def capitalizar_datos(texto):
-    if texto is None:
-        return None
-    return ' '.join(palabra.capitalize() for palabra in str(texto).strip().split())
-
-
-def titulo(texto):
-    return ' '.join(palabra.capitalize() for palabra in str(texto).split())
-
-
-def fila_demo(**kwargs):
-    return SimpleNamespace(**kwargs)
-
-
-def obtener_conexion():
-    """
-    Localmente usa SQL Server Management Studio.
-    En Render, si pyodbc o SQL Server no están disponibles, lanza excepción.
-    Las rutas tienen modo demo para no romper la página online.
-    """
-    if pyodbc is None:
-        raise Exception("SQL Server no disponible en Render")
-
-    conexion = pyodbc.connect(
-        'DRIVER={ODBC Driver 17 for SQL Server};'
-        'SERVER=PC_HALION;'
-        'DATABASE=Minimarkt_Damir;'
-        'Trusted_Connection=yes;'
-    )
-    return conexion
-
-
-def asegurar_columnas_extra(cursor):
-    cursor.execute("""
-        IF COL_LENGTH('Clientes', 'Foto') IS NULL
-        BEGIN
-            ALTER TABLE Clientes ADD Foto VARCHAR(250) NULL
-        END
-    """)
-
-
 def crear_bloc_notas(tipo, datos):
-    carpeta_txt = Path('registros_txt')
+    carpeta_txt = BASE_DIR / 'registros_txt'
     carpeta_txt.mkdir(exist_ok=True)
 
     fecha_archivo = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -185,7 +172,7 @@ PRODUCTOS_DEMO = [
 
 
 def crear_imagenes_producto_demo():
-    carpeta = Path(app.root_path) / 'static' / 'img' / 'productos'
+    carpeta = BASE_DIR / 'static' / 'img' / 'productos'
     carpeta.mkdir(parents=True, exist_ok=True)
 
     for nombre, marca, precio, pasillo, imagen in PRODUCTOS_DEMO:
@@ -206,129 +193,97 @@ def crear_imagenes_producto_demo():
         archivo.write_text(svg, encoding='utf-8')
 
 
-def productos_demo_filtrados(nombre_pasillo=None):
-    crear_imagenes_producto_demo()
-
-    productos = []
-    for i, (nombre, marca, precio, pasillo, imagen) in enumerate(PRODUCTOS_DEMO, start=1):
-        if nombre_pasillo and pasillo != nombre_pasillo:
-            continue
-
-        productos.append(fila_demo(
-            IdProducto=i,
-            Nombre=titulo(nombre),
-            Marca=titulo(marca),
-            Precio=float(precio),
-            Pasillo=pasillo,
-            Imagen=f'img/productos/{imagen}'
-        ))
-
-    return productos
-
-
-def clientes_demo_lista():
-    clientes = []
-
-    for i in range(1, 51):
-        nombre, apellido, direccion = CLIENTES_DEMO[(i - 1) % len(CLIENTES_DEMO)]
-
-        clientes.append(fila_demo(
-            IdCliente=i,
-            Nombre=titulo(nombre),
-            Apellido=titulo(apellido),
-            Celular='9' + str(10000000 + i * 13579)[-8:],
-            Correo=f'{nombre.lower()}.{apellido.lower()}.{i}@demo.com',
-            Direccion=titulo(direccion),
-            Foto=None,
-            Letra=titulo(nombre)[0],
-            Total=5,
-            Contraseña=generate_password_hash('123456')
-        ))
-
-    return clientes
-
-
-def sembrar_datos_demo():
+def inicializar_base_datos():
     crear_imagenes_producto_demo()
 
     conexion = obtener_conexion()
     cursor = conexion.cursor()
 
-    cursor.execute('SELECT COUNT(*) FROM Clientes')
-    total_clientes = cursor.fetchone()[0]
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS Clientes (
+            IdCliente INTEGER PRIMARY KEY AUTOINCREMENT,
+            Nombre TEXT NOT NULL,
+            Apellido TEXT NOT NULL,
+            Celular TEXT,
+            Correo TEXT UNIQUE NOT NULL,
+            Direccion TEXT,
+            Contraseña TEXT NOT NULL,
+            Foto TEXT
+        )
+    """)
 
-    clave_hash = generate_password_hash('123456')
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS Productos (
+            IdProducto INTEGER PRIMARY KEY AUTOINCREMENT,
+            Nombre TEXT NOT NULL,
+            Marca TEXT NOT NULL,
+            Precio REAL NOT NULL,
+            Pasillo TEXT NOT NULL,
+            Imagen TEXT NOT NULL
+        )
+    """)
 
-    if total_clientes < 50:
-        for i in range(50 - total_clientes):
-            nombre, apellido, direccion = CLIENTES_DEMO[i % len(CLIENTES_DEMO)]
-            correo_demo = f"{nombre.lower()}.{apellido.lower()}.{i + 1}@demo.com"
-            celular_demo = '9' + str(10000000 + i * 13579)[-8:]
+    cursor.execute("SELECT COUNT(*) AS Total FROM Clientes")
+    total_clientes = cursor.fetchone()["Total"]
 
-            cursor.execute('SELECT 1 FROM Clientes WHERE Correo = ?', correo_demo)
+    if total_clientes == 0:
+        clave_hash = generate_password_hash('123456')
 
-            if not cursor.fetchone():
-                cursor.execute(
-                    'INSERT INTO Clientes (Nombre, Apellido, Celular, Correo, Direccion, Contraseña) VALUES (?, ?, ?, ?, ?, ?)',
-                    titulo(nombre), titulo(apellido), celular_demo, correo_demo, titulo(direccion), clave_hash
-                )
+        for i in range(1, 51):
+            nombre, apellido, direccion = CLIENTES_DEMO[(i - 1) % len(CLIENTES_DEMO)]
+            correo = f"{nombre.lower()}.{apellido.lower()}.{i}@demo.com"
+            celular = '9' + str(10000000 + i * 13579)[-8:]
 
-    cursor.execute('SELECT COUNT(*) FROM Productos')
-    total_productos = cursor.fetchone()[0]
+            cursor.execute("""
+                INSERT INTO Clientes (Nombre, Apellido, Celular, Correo, Direccion, Contraseña, Foto)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, titulo(nombre), titulo(apellido), celular, correo, titulo(direccion), clave_hash, None)
 
-    if total_productos < 50:
-        for i in range(50 - total_productos):
-            nombre, marca, precio, pasillo, imagen = PRODUCTOS_DEMO[i % len(PRODUCTOS_DEMO)]
-            nombre_demo = titulo(nombre if i < len(PRODUCTOS_DEMO) else f'{nombre} Familiar')
-            precio_demo = round(float(precio) + (i % 7) * 0.35, 2)
+    cursor.execute("SELECT COUNT(*) AS Total FROM Productos")
+    total_productos = cursor.fetchone()["Total"]
 
-            cursor.execute(
-                'INSERT INTO Productos (Nombre, Marca, Precio, Pasillo, Imagen) VALUES (?, ?, ?, ?, ?)',
-                nombre_demo, titulo(marca), precio_demo, pasillo, f'img/productos/{imagen}'
-            )
+    if total_productos == 0:
+        for nombre, marca, precio, pasillo, imagen in PRODUCTOS_DEMO:
+            cursor.execute("""
+                INSERT INTO Productos (Nombre, Marca, Precio, Pasillo, Imagen)
+                VALUES (?, ?, ?, ?, ?)
+            """, titulo(nombre), titulo(marca), float(precio), pasillo, f'img/productos/{imagen}')
 
     conexion.commit()
     conexion.close()
 
 
+inicializar_base_datos()
+
+
 @app.route('/')
 def index():
-    try:
-        sembrar_datos_demo()
-    except Exception:
-        crear_imagenes_producto_demo()
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
 
-    try:
-        conexion = obtener_conexion()
-        cursor = conexion.cursor()
-        cursor.execute("SELECT DISTINCT Pasillo FROM Productos WHERE Pasillo IS NOT NULL AND Pasillo <> '' ORDER BY Pasillo")
-        pasillos = [fila[0] for fila in cursor.fetchall()]
-        conexion.close()
-    except Exception:
-        pasillos = ['Abarrotes', 'Bebidas', 'Desayuno', 'Snacks', 'Limpieza', 'Lácteos', 'Cuidado Personal', 'Conservas', 'Carnes', 'Frutas Y Verduras']
+    cursor.execute("SELECT DISTINCT Pasillo FROM Productos WHERE Pasillo IS NOT NULL AND Pasillo <> '' ORDER BY Pasillo")
+    pasillos = [fila["Pasillo"] for fila in cursor.fetchall()]
+
+    conexion.close()
 
     return render_template('index.html', pasillos=pasillos)
 
 
 def productos_por_pasillo(nombre_pasillo):
-    try:
-        conexion = obtener_conexion()
-        cursor = conexion.cursor()
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
 
-        cursor.execute("""
-            SELECT IdProducto, Nombre, Marca, Precio, Pasillo, Imagen
-            FROM Productos
-            WHERE Pasillo = ?
-            ORDER BY IdProducto DESC
-        """, nombre_pasillo)
+    cursor.execute("""
+        SELECT IdProducto, Nombre, Marca, Precio, Pasillo, Imagen
+        FROM Productos
+        WHERE Pasillo = ?
+        ORDER BY IdProducto DESC
+    """, (nombre_pasillo,))
 
-        productos = cursor.fetchall()
-        conexion.close()
+    productos = filas_a_objetos(cursor.fetchall())
+    conexion.close()
 
-        return productos
-
-    except Exception:
-        return productos_demo_filtrados(nombre_pasillo)
+    return productos
 
 
 def renderizar_pasillo(nombre_pasillo, icono, subtitulo):
@@ -391,30 +346,18 @@ def login():
         correo = request.form.get('correo')
         contraseña = request.form.get('contraseña')
 
-        try:
-            conexion = obtener_conexion()
-            cursor = conexion.cursor()
+        conexion = obtener_conexion()
+        cursor = conexion.cursor()
 
-            cursor.execute("SELECT * FROM Clientes WHERE Correo = ?", correo)
-            usuario = cursor.fetchone()
-            conexion.close()
+        cursor.execute("SELECT * FROM Clientes WHERE Correo = ?", (correo,))
+        usuario = fila_a_objeto(cursor.fetchone())
 
-            if usuario and check_password_hash(usuario.Contraseña, contraseña):
-                session['usuario_correo'] = usuario.Correo
-                session['usuario_nombre'] = usuario.Nombre
-                return redirect(url_for('index'))
+        conexion.close()
 
-        except Exception:
-            for usuario in clientes_demo_lista():
-                if usuario.Correo == correo and check_password_hash(usuario.Contraseña, contraseña):
-                    session['usuario_correo'] = usuario.Correo
-                    session['usuario_nombre'] = usuario.Nombre
-                    return redirect(url_for('index'))
-
-            if correo and contraseña:
-                session['usuario_correo'] = correo
-                session['usuario_nombre'] = correo.split('@')[0].capitalize()
-                return redirect(url_for('index'))
+        if usuario and check_password_hash(usuario.Contraseña, contraseña):
+            session['usuario_correo'] = usuario.Correo
+            session['usuario_nombre'] = usuario.Nombre
+            return redirect(url_for('index'))
 
         flash('Correo o contraseña incorrectos.')
         return redirect(url_for('login'))
@@ -437,49 +380,36 @@ def registro():
             flash('Las contraseñas no coinciden')
             return redirect(url_for('registro'))
 
-        try:
-            conexion = obtener_conexion()
-            cursor = conexion.cursor()
+        conexion = obtener_conexion()
+        cursor = conexion.cursor()
 
-            cursor.execute("SELECT * FROM Clientes WHERE Correo = ?", correo)
-            usuario = cursor.fetchone()
+        cursor.execute("SELECT * FROM Clientes WHERE Correo = ?", (correo,))
+        usuario = cursor.fetchone()
 
-            if usuario:
-                flash('Este correo ya existe.')
-                conexion.close()
-                return redirect(url_for('registro'))
-
-            contraseña_hash = generate_password_hash(contraseña)
-
-            cursor.execute("""
-                INSERT INTO Clientes
-                (Nombre, Apellido, Celular, Correo, Direccion, Contraseña)
-                OUTPUT INSERTED.IdCliente
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, nombre, apellido, celular, correo, direccion, contraseña_hash)
-
-            id_cliente_nuevo = cursor.fetchone()[0]
-            conexion.commit()
+        if usuario:
+            flash('Este correo ya existe.')
             conexion.close()
+            return redirect(url_for('registro'))
 
-            crear_bloc_notas('cliente', {
-                'ID': id_cliente_nuevo,
-                'Nombre': nombre,
-                'Apellido': apellido,
-                'Celular': celular or 'Sin celular',
-                'Correo': correo,
-                'Dirección': direccion or 'Sin dirección'
-            })
+        contraseña_hash = generate_password_hash(contraseña)
 
-        except Exception:
-            crear_bloc_notas('cliente_demo', {
-                'Nombre': nombre,
-                'Apellido': apellido,
-                'Celular': celular or 'Sin celular',
-                'Correo': correo,
-                'Dirección': direccion or 'Sin dirección'
-            })
-            flash('Registro creado en modo demostración.')
+        cursor.execute("""
+            INSERT INTO Clientes (Nombre, Apellido, Celular, Correo, Direccion, Contraseña, Foto)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (nombre, apellido, celular, correo, direccion, contraseña_hash, None))
+
+        id_cliente_nuevo = cursor.lastrowid
+        conexion.commit()
+        conexion.close()
+
+        crear_bloc_notas('cliente', {
+            'ID': id_cliente_nuevo,
+            'Nombre': nombre,
+            'Apellido': apellido,
+            'Celular': celular or 'Sin celular',
+            'Correo': correo,
+            'Dirección': direccion or 'Sin dirección'
+        })
 
         session['usuario_nombre'] = nombre
         session['usuario_correo'] = correo
@@ -494,24 +424,13 @@ def perfil():
     if 'usuario_correo' not in session:
         return redirect(url_for('login'))
 
-    try:
-        conexion = obtener_conexion()
-        cursor = conexion.cursor()
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
 
-        cursor.execute("SELECT * FROM Clientes WHERE Correo = ?", session['usuario_correo'])
-        usuario = cursor.fetchone()
+    cursor.execute("SELECT * FROM Clientes WHERE Correo = ?", (session['usuario_correo'],))
+    usuario = fila_a_objeto(cursor.fetchone())
 
-        conexion.close()
-
-    except Exception:
-        usuario = fila_demo(
-            Nombre=session.get('usuario_nombre', 'Usuario'),
-            Apellido='',
-            Celular='',
-            Correo=session.get('usuario_correo', ''),
-            Direccion='',
-            Foto=None
-        )
+    conexion.close()
 
     return render_template('perfil.html', usuario=usuario, correo=session['usuario_correo'])
 
@@ -555,12 +474,7 @@ def admin_sembrar_datos():
     if not session.get('admin'):
         return redirect(url_for('admin_login'))
 
-    try:
-        sembrar_datos_demo()
-        flash('Se crearon datos ficticios en SQL Server.')
-    except Exception:
-        flash('Render está en modo demostración. Los datos demo ya están disponibles.')
-
+    flash('Los datos ficticios ya están guardados en la base SQLite.')
     return redirect(request.referrer or url_for('admin_dashboard'))
 
 
@@ -569,108 +483,84 @@ def admin_clientes():
     if not session.get('admin'):
         return redirect(url_for('admin_login'))
 
-    try:
-        conexion = obtener_conexion()
-        cursor = conexion.cursor()
-        asegurar_columnas_extra(cursor)
-        conexion.commit()
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
 
-        if request.method == 'POST':
-            nombre = capitalizar_datos(request.form.get('nombre'))
-            apellido = capitalizar_datos(request.form.get('apellido'))
-            celular = request.form.get('celular')
-            correo = request.form.get('correo')
-            direccion = capitalizar_datos(request.form.get('direccion'))
-            contraseña = request.form.get('contraseña')
-            foto = guardar_imagen_subida(request.files.get('foto'), 'UPLOAD_FOLDER_CLIENTES', 'clientes')
+    if request.method == 'POST':
+        nombre = capitalizar_datos(request.form.get('nombre'))
+        apellido = capitalizar_datos(request.form.get('apellido'))
+        celular = request.form.get('celular')
+        correo = request.form.get('correo')
+        direccion = capitalizar_datos(request.form.get('direccion'))
+        contraseña = request.form.get('contraseña')
+        foto = guardar_imagen_subida(request.files.get('foto'), 'UPLOAD_FOLDER_CLIENTES', 'clientes')
 
-            if not nombre or not apellido or not correo or not contraseña:
-                flash('Completa nombre, apellido, correo y contraseña.')
-                conexion.close()
-                return redirect(url_for('admin_clientes'))
-
-            cursor.execute("SELECT * FROM Clientes WHERE Correo = ?", correo)
-            cliente_existente = cursor.fetchone()
-
-            if cliente_existente:
-                flash('Ese correo ya está registrado.')
-                conexion.close()
-                return redirect(url_for('admin_clientes'))
-
-            contraseña_hash = generate_password_hash(contraseña)
-
-            cursor.execute("""
-                INSERT INTO Clientes
-                (Nombre, Apellido, Celular, Correo, Direccion, Contraseña, Foto)
-                OUTPUT INSERTED.IdCliente
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, nombre, apellido, celular, correo, direccion, contraseña_hash, foto)
-
-            id_cliente_nuevo = cursor.fetchone()[0]
-            conexion.commit()
+        if not nombre or not apellido or not correo or not contraseña:
+            flash('Completa nombre, apellido, correo y contraseña.')
             conexion.close()
-
-            crear_bloc_notas('cliente', {
-                'ID': id_cliente_nuevo,
-                'Nombre': nombre,
-                'Apellido': apellido,
-                'Celular': celular or 'Sin celular',
-                'Correo': correo,
-                'Dirección': direccion or 'Sin dirección',
-                'Foto': foto or 'Sin foto'
-            })
-
-            flash('Cliente agregado correctamente.')
             return redirect(url_for('admin_clientes'))
 
-        cursor.execute("""
-            SELECT IdCliente, Nombre, Apellido, Celular, Correo, Direccion, Foto
-            FROM Clientes
-            ORDER BY IdCliente DESC
-        """)
-        clientes = cursor.fetchall()
+        cursor.execute("SELECT * FROM Clientes WHERE Correo = ?", (correo,))
+        cliente_existente = cursor.fetchone()
 
-        cursor.execute("SELECT COUNT(*) FROM Clientes")
-        total_clientes = cursor.fetchone()[0]
+        if cliente_existente:
+            flash('Ese correo ya está registrado.')
+            conexion.close()
+            return redirect(url_for('admin_clientes'))
 
-        cursor.execute("SELECT COUNT(*) FROM Clientes WHERE Celular IS NOT NULL AND Celular <> ''")
-        clientes_con_celular = cursor.fetchone()[0]
-
-        cursor.execute("SELECT COUNT(*) FROM Clientes WHERE Direccion IS NOT NULL AND Direccion <> ''")
-        clientes_con_direccion = cursor.fetchone()[0]
-
-        cursor.execute("SELECT TOP 5 IdCliente, Nombre, Apellido, Correo FROM Clientes ORDER BY IdCliente DESC")
-        ultimos_clientes = cursor.fetchall()
+        contraseña_hash = generate_password_hash(contraseña)
 
         cursor.execute("""
-            SELECT TOP 6 LEFT(Nombre, 1) AS Letra, COUNT(*) AS Total
-            FROM Clientes
-            GROUP BY LEFT(Nombre, 1)
-            ORDER BY Total DESC
-        """)
-        clientes_por_inicial = cursor.fetchall()
+            INSERT INTO Clientes (Nombre, Apellido, Celular, Correo, Direccion, Contraseña, Foto)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (nombre, apellido, celular, correo, direccion, contraseña_hash, foto))
 
+        id_cliente_nuevo = cursor.lastrowid
+        conexion.commit()
         conexion.close()
 
-    except Exception:
-        if request.method == 'POST':
-            flash('Modo demo Render: el cliente no se guardó en SQL, pero la página funciona para presentación.')
-            return redirect(url_for('admin_clientes'))
+        crear_bloc_notas('cliente', {
+            'ID': id_cliente_nuevo,
+            'Nombre': nombre,
+            'Apellido': apellido,
+            'Celular': celular or 'Sin celular',
+            'Correo': correo,
+            'Dirección': direccion or 'Sin dirección',
+            'Foto': foto or 'Sin foto'
+        })
 
-        clientes = clientes_demo_lista()
-        total_clientes = len(clientes)
-        clientes_con_celular = len([c for c in clientes if c.Celular])
-        clientes_con_direccion = len([c for c in clientes if c.Direccion])
-        ultimos_clientes = clientes[:5]
+        flash('Cliente agregado correctamente.')
+        return redirect(url_for('admin_clientes'))
 
-        conteo = {}
-        for c in clientes:
-            conteo[c.Nombre[0]] = conteo.get(c.Nombre[0], 0) + 1
+    cursor.execute("""
+        SELECT IdCliente, Nombre, Apellido, Celular, Correo, Direccion, Foto
+        FROM Clientes
+        ORDER BY IdCliente DESC
+    """)
+    clientes = filas_a_objetos(cursor.fetchall())
 
-        clientes_por_inicial = [
-            fila_demo(Letra=k, Total=v)
-            for k, v in sorted(conteo.items())[:6]
-        ]
+    cursor.execute("SELECT COUNT(*) AS Total FROM Clientes")
+    total_clientes = cursor.fetchone()["Total"]
+
+    cursor.execute("SELECT COUNT(*) AS Total FROM Clientes WHERE Celular IS NOT NULL AND Celular <> ''")
+    clientes_con_celular = cursor.fetchone()["Total"]
+
+    cursor.execute("SELECT COUNT(*) AS Total FROM Clientes WHERE Direccion IS NOT NULL AND Direccion <> ''")
+    clientes_con_direccion = cursor.fetchone()["Total"]
+
+    cursor.execute("SELECT IdCliente, Nombre, Apellido, Correo FROM Clientes ORDER BY IdCliente DESC LIMIT 5")
+    ultimos_clientes = filas_a_objetos(cursor.fetchall())
+
+    cursor.execute("""
+        SELECT SUBSTR(Nombre, 1, 1) AS Letra, COUNT(*) AS Total
+        FROM Clientes
+        GROUP BY SUBSTR(Nombre, 1, 1)
+        ORDER BY Total DESC
+        LIMIT 6
+    """)
+    clientes_por_inicial = filas_a_objetos(cursor.fetchall())
+
+    conexion.close()
 
     clientes_sin_celular = total_clientes - clientes_con_celular
     clientes_sin_direccion = total_clientes - clientes_con_direccion
@@ -693,103 +583,75 @@ def admin_productos():
     if not session.get('admin'):
         return redirect(url_for('admin_login'))
 
-    try:
-        conexion = obtener_conexion()
-        cursor = conexion.cursor()
-        asegurar_columnas_extra(cursor)
-        conexion.commit()
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
 
-        if request.method == 'POST':
-            nombre = capitalizar_datos(request.form.get('nombre'))
-            marca = capitalizar_datos(request.form.get('marca'))
-            precio = request.form.get('precio')
-            pasillo = capitalizar_datos(request.form.get('pasillo'))
-            imagen = request.form.get('imagen')
-            imagen_subida = guardar_imagen_subida(request.files.get('imagen_archivo'), 'UPLOAD_FOLDER_PRODUCTOS', 'productos')
+    if request.method == 'POST':
+        nombre = capitalizar_datos(request.form.get('nombre'))
+        marca = capitalizar_datos(request.form.get('marca'))
+        precio = request.form.get('precio')
+        pasillo = capitalizar_datos(request.form.get('pasillo'))
+        imagen = request.form.get('imagen')
+        imagen_subida = guardar_imagen_subida(request.files.get('imagen_archivo'), 'UPLOAD_FOLDER_PRODUCTOS', 'productos')
 
-            if imagen_subida:
-                imagen = imagen_subida
+        if imagen_subida:
+            imagen = imagen_subida
 
-            if not nombre or not marca or not precio or not pasillo or not imagen:
-                flash('Completa todos los datos del producto.')
-                conexion.close()
-                return redirect(url_for('admin_productos'))
-
-            cursor.execute("""
-                INSERT INTO Productos
-                (Nombre, Marca, Precio, Pasillo, Imagen)
-                OUTPUT INSERTED.IdProducto
-                VALUES (?, ?, ?, ?, ?)
-            """, nombre, marca, precio, pasillo, imagen)
-
-            id_producto_nuevo = cursor.fetchone()[0]
-            conexion.commit()
+        if not nombre or not marca or not precio or not pasillo or not imagen:
+            flash('Completa todos los datos del producto.')
             conexion.close()
-
-            crear_bloc_notas('producto', {
-                'ID': id_producto_nuevo,
-                'Nombre': nombre,
-                'Marca': marca,
-                'Precio': precio,
-                'Pasillo': pasillo,
-                'Imagen': imagen
-            })
-
-            flash('Producto agregado correctamente.')
             return redirect(url_for('admin_productos'))
 
         cursor.execute("""
-            SELECT IdProducto, Nombre, Marca, Precio, Pasillo, Imagen
-            FROM Productos
-            ORDER BY IdProducto DESC
-        """)
-        productos = cursor.fetchall()
+            INSERT INTO Productos (Nombre, Marca, Precio, Pasillo, Imagen)
+            VALUES (?, ?, ?, ?, ?)
+        """, (nombre, marca, float(precio), pasillo, imagen))
 
-        cursor.execute("SELECT COUNT(*) FROM Productos")
-        total_productos = cursor.fetchone()[0]
-
-        cursor.execute("SELECT ISNULL(AVG(CAST(Precio AS FLOAT)), 0) FROM Productos")
-        precio_promedio = cursor.fetchone()[0]
-
-        cursor.execute("SELECT COUNT(DISTINCT Pasillo) FROM Productos")
-        total_pasillos = cursor.fetchone()[0]
-
-        cursor.execute("SELECT TOP 1 Nombre, Marca, Precio FROM Productos ORDER BY Precio DESC")
-        producto_mayor_precio = cursor.fetchone()
-
-        cursor.execute("SELECT Pasillo, COUNT(*) AS Total FROM Productos GROUP BY Pasillo ORDER BY Total DESC")
-        productos_por_pasillo = cursor.fetchall()
-
-        cursor.execute("SELECT TOP 5 Nombre, Marca, Precio, Imagen FROM Productos ORDER BY IdProducto DESC")
-        ultimos_productos = cursor.fetchall()
-
-        cursor.execute("SELECT COUNT(*) FROM Productos WHERE Precio <= 5")
-        productos_economicos = cursor.fetchone()[0]
-
+        id_producto_nuevo = cursor.lastrowid
+        conexion.commit()
         conexion.close()
 
-    except Exception:
-        if request.method == 'POST':
-            flash('Modo demo Render: el producto no se guardó en SQL, pero la página funciona para presentación.')
-            return redirect(url_for('admin_productos'))
+        crear_bloc_notas('producto', {
+            'ID': id_producto_nuevo,
+            'Nombre': nombre,
+            'Marca': marca,
+            'Precio': precio,
+            'Pasillo': pasillo,
+            'Imagen': imagen
+        })
 
-        productos = productos_demo_filtrados()
-        total_productos = len(productos)
-        precio_promedio = sum(p.Precio for p in productos) / max(total_productos, 1)
-        total_pasillos = len(set(p.Pasillo for p in productos))
-        producto_mayor_precio = max(productos, key=lambda p: p.Precio) if productos else None
+        flash('Producto agregado correctamente.')
+        return redirect(url_for('admin_productos'))
 
-        conteo = {}
-        for p in productos:
-            conteo[p.Pasillo] = conteo.get(p.Pasillo, 0) + 1
+    cursor.execute("""
+        SELECT IdProducto, Nombre, Marca, Precio, Pasillo, Imagen
+        FROM Productos
+        ORDER BY IdProducto DESC
+    """)
+    productos = filas_a_objetos(cursor.fetchall())
 
-        productos_por_pasillo = [
-            fila_demo(Pasillo=k, Total=v)
-            for k, v in sorted(conteo.items(), key=lambda x: x[1], reverse=True)
-        ]
+    cursor.execute("SELECT COUNT(*) AS Total FROM Productos")
+    total_productos = cursor.fetchone()["Total"]
 
-        ultimos_productos = productos[:5]
-        productos_economicos = len([p for p in productos if p.Precio <= 5])
+    cursor.execute("SELECT IFNULL(AVG(Precio), 0) AS Promedio FROM Productos")
+    precio_promedio = cursor.fetchone()["Promedio"]
+
+    cursor.execute("SELECT COUNT(DISTINCT Pasillo) AS Total FROM Productos")
+    total_pasillos = cursor.fetchone()["Total"]
+
+    cursor.execute("SELECT Nombre, Marca, Precio FROM Productos ORDER BY Precio DESC LIMIT 1")
+    producto_mayor_precio = fila_a_objeto(cursor.fetchone())
+
+    cursor.execute("SELECT Pasillo, COUNT(*) AS Total FROM Productos GROUP BY Pasillo ORDER BY Total DESC")
+    productos_por_pasillo = filas_a_objetos(cursor.fetchall())
+
+    cursor.execute("SELECT Nombre, Marca, Precio, Imagen FROM Productos ORDER BY IdProducto DESC LIMIT 5")
+    ultimos_productos = filas_a_objetos(cursor.fetchall())
+
+    cursor.execute("SELECT COUNT(*) AS Total FROM Productos WHERE Precio <= 5")
+    productos_economicos = cursor.fetchone()["Total"]
+
+    conexion.close()
 
     return render_template(
         'admin_productos.html',
@@ -809,54 +671,47 @@ def admin_editar_cliente(id_cliente):
     if not session.get('admin'):
         return redirect(url_for('admin_login'))
 
-    try:
-        nombre = capitalizar_datos(request.form.get('nombre'))
-        apellido = capitalizar_datos(request.form.get('apellido'))
-        celular = request.form.get('celular')
-        correo = request.form.get('correo')
-        direccion = capitalizar_datos(request.form.get('direccion'))
-        contraseña = request.form.get('contraseña')
-        foto = guardar_imagen_subida(request.files.get('foto'), 'UPLOAD_FOLDER_CLIENTES', 'clientes')
+    nombre = capitalizar_datos(request.form.get('nombre'))
+    apellido = capitalizar_datos(request.form.get('apellido'))
+    celular = request.form.get('celular')
+    correo = request.form.get('correo')
+    direccion = capitalizar_datos(request.form.get('direccion'))
+    contraseña = request.form.get('contraseña')
+    foto = guardar_imagen_subida(request.files.get('foto'), 'UPLOAD_FOLDER_CLIENTES', 'clientes')
 
-        if not nombre or not apellido or not correo:
-            flash('Completa nombre, apellido y correo para editar el cliente.')
-            return redirect(url_for('admin_clientes'))
+    if not nombre or not apellido or not correo:
+        flash('Completa nombre, apellido y correo para editar el cliente.')
+        return redirect(url_for('admin_clientes'))
 
-        conexion = obtener_conexion()
-        cursor = conexion.cursor()
-        asegurar_columnas_extra(cursor)
-        conexion.commit()
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
 
-        cursor.execute("SELECT * FROM Clientes WHERE Correo = ? AND IdCliente <> ?", correo, id_cliente)
-        cliente_existente = cursor.fetchone()
+    cursor.execute("SELECT * FROM Clientes WHERE Correo = ? AND IdCliente <> ?", (correo, id_cliente))
+    cliente_existente = cursor.fetchone()
 
-        if cliente_existente:
-            flash('No se pudo editar: ese correo ya pertenece a otro cliente.')
-            conexion.close()
-            return redirect(url_for('admin_clientes'))
-
-        campos = ['Nombre = ?', 'Apellido = ?', 'Celular = ?', 'Correo = ?', 'Direccion = ?']
-        valores = [nombre, apellido, celular, correo, direccion]
-
-        if contraseña:
-            campos.append('Contraseña = ?')
-            valores.append(generate_password_hash(contraseña))
-
-        if foto:
-            campos.append('Foto = ?')
-            valores.append(foto)
-
-        valores.append(id_cliente)
-
-        cursor.execute(f"UPDATE Clientes SET {', '.join(campos)} WHERE IdCliente = ?", valores)
-        conexion.commit()
+    if cliente_existente:
+        flash('No se pudo editar: ese correo ya pertenece a otro cliente.')
         conexion.close()
+        return redirect(url_for('admin_clientes'))
 
-        flash('Cliente editado correctamente.')
+    campos = ['Nombre = ?', 'Apellido = ?', 'Celular = ?', 'Correo = ?', 'Direccion = ?']
+    valores = [nombre, apellido, celular, correo, direccion]
 
-    except Exception:
-        flash('Modo demo Render: edición simulada.')
+    if contraseña:
+        campos.append('Contraseña = ?')
+        valores.append(generate_password_hash(contraseña))
 
+    if foto:
+        campos.append('Foto = ?')
+        valores.append(foto)
+
+    valores.append(id_cliente)
+
+    cursor.execute(f"UPDATE Clientes SET {', '.join(campos)} WHERE IdCliente = ?", valores)
+    conexion.commit()
+    conexion.close()
+
+    flash('Cliente editado correctamente.')
     return redirect(url_for('admin_clientes'))
 
 
@@ -865,20 +720,15 @@ def admin_eliminar_cliente(id_cliente):
     if not session.get('admin'):
         return redirect(url_for('admin_login'))
 
-    try:
-        conexion = obtener_conexion()
-        cursor = conexion.cursor()
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
 
-        cursor.execute("DELETE FROM Clientes WHERE IdCliente = ?", id_cliente)
+    cursor.execute("DELETE FROM Clientes WHERE IdCliente = ?", (id_cliente,))
 
-        conexion.commit()
-        conexion.close()
+    conexion.commit()
+    conexion.close()
 
-        flash('Cliente eliminado correctamente.')
-
-    except Exception:
-        flash('Modo demo Render: eliminación simulada.')
-
+    flash('Cliente eliminado correctamente.')
     return redirect(url_for('admin_clientes'))
 
 
@@ -887,38 +737,33 @@ def admin_editar_producto(id_producto):
     if not session.get('admin'):
         return redirect(url_for('admin_login'))
 
-    try:
-        nombre = capitalizar_datos(request.form.get('nombre'))
-        marca = capitalizar_datos(request.form.get('marca'))
-        precio = request.form.get('precio')
-        pasillo = capitalizar_datos(request.form.get('pasillo'))
-        imagen = request.form.get('imagen')
-        imagen_subida = guardar_imagen_subida(request.files.get('imagen_archivo'), 'UPLOAD_FOLDER_PRODUCTOS', 'productos')
+    nombre = capitalizar_datos(request.form.get('nombre'))
+    marca = capitalizar_datos(request.form.get('marca'))
+    precio = request.form.get('precio')
+    pasillo = capitalizar_datos(request.form.get('pasillo'))
+    imagen = request.form.get('imagen')
+    imagen_subida = guardar_imagen_subida(request.files.get('imagen_archivo'), 'UPLOAD_FOLDER_PRODUCTOS', 'productos')
 
-        if imagen_subida:
-            imagen = imagen_subida
+    if imagen_subida:
+        imagen = imagen_subida
 
-        if not nombre or not marca or not precio or not pasillo or not imagen:
-            flash('Completa todos los datos para editar el producto.')
-            return redirect(url_for('admin_productos'))
+    if not nombre or not marca or not precio or not pasillo or not imagen:
+        flash('Completa todos los datos para editar el producto.')
+        return redirect(url_for('admin_productos'))
 
-        conexion = obtener_conexion()
-        cursor = conexion.cursor()
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
 
-        cursor.execute("""
-            UPDATE Productos
-            SET Nombre = ?, Marca = ?, Precio = ?, Pasillo = ?, Imagen = ?
-            WHERE IdProducto = ?
-        """, nombre, marca, precio, pasillo, imagen, id_producto)
+    cursor.execute("""
+        UPDATE Productos
+        SET Nombre = ?, Marca = ?, Precio = ?, Pasillo = ?, Imagen = ?
+        WHERE IdProducto = ?
+    """, (nombre, marca, float(precio), pasillo, imagen, id_producto))
 
-        conexion.commit()
-        conexion.close()
+    conexion.commit()
+    conexion.close()
 
-        flash('Producto editado correctamente.')
-
-    except Exception:
-        flash('Modo demo Render: edición simulada.')
-
+    flash('Producto editado correctamente.')
     return redirect(url_for('admin_productos'))
 
 
@@ -927,20 +772,15 @@ def admin_eliminar_producto(id_producto):
     if not session.get('admin'):
         return redirect(url_for('admin_login'))
 
-    try:
-        conexion = obtener_conexion()
-        cursor = conexion.cursor()
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
 
-        cursor.execute("DELETE FROM Productos WHERE IdProducto = ?", id_producto)
+    cursor.execute("DELETE FROM Productos WHERE IdProducto = ?", (id_producto,))
 
-        conexion.commit()
-        conexion.close()
+    conexion.commit()
+    conexion.close()
 
-        flash('Producto eliminado correctamente.')
-
-    except Exception:
-        flash('Modo demo Render: eliminación simulada.')
-
+    flash('Producto eliminado correctamente.')
     return redirect(url_for('admin_productos'))
 
 
